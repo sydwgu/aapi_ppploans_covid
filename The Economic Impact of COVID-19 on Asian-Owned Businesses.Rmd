@@ -1,0 +1,342 @@
+---
+title: "The Economic Impact of COVID-19 on Asian-Owned Businesses in the United States"
+author: "Nicolette Kobrick, Isabel Francis, Sydney Gu"
+date: "7/16/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = '/Users/sydgu/Applications/Columbia Data/Final Project')
+getwd()
+```
+
+In this document, we use three data sets to determine if Asian-owned businesses in the United States have experienced a negative economic impact caused by the COVID-19 pandemic. To do so, we have used data of PPP loans under $150K filed by state from the Small Business Administration as an indicator of economic stress. The second data set is a crosswalk between zip codes and FIPS (Federal Information Processing Standard) county codes, and the third data set is the New York Times' data of confirmed coronavirus cases per county (as of July 11). 
+
+
+Here, we install all the necessary packages for this document.
+```{r}
+# install packages
+library(knitr)
+library(tidyverse)
+library(plyr)
+library(dplyr)
+library(readxl)
+library(mice)
+library(stringr)
+library(ggplot2)
+```
+
+Here, we import the data of PPP loans from each state. 
+```{r}
+# importing data from each state/region
+alabama <- read.csv("PPP Data up to 150K - AL.csv")
+alaska <- read.csv("PPP Data up to 150K - AK.csv")
+arizona <- read.csv("PPP Data up to 150K - AR.csv")
+arkansas <- read.csv("PPP Data up to 150K - AZ.csv")
+california <- read.csv("PPP Data up to 150K - CA.csv")
+colorado <- read.csv("PPP Data up to 150K - CO.csv")
+connecticut <- read.csv("PPP Data up to 150K - CT.csv")
+delaware <- read.csv("PPP Data up to 150K - DE.csv")
+dc <- read.csv("PPP Data up to 150K - DC.csv")
+florida <- read.csv("PPP Data up to 150K - FL.csv")
+georgia <- read.csv("PPP Data up to 150K - GA.csv")
+hawaii <- read.csv("PPP Data up to 150K - HI.csv")
+idaho <- read.csv("PPP Data up to 150K - ID.csv")
+illinois <- read.csv("PPP Data up to 150K - IL.csv")
+indiana <- read.csv("PPP Data up to 150K - IN.csv")
+iowa <- read.csv("PPP Data up to 150K - IA.csv")
+kansas <- read.csv("PPP Data up to 150K - KS.csv")
+kentucky <- read.csv("PPP Data up to 150K - KY.csv")
+louisiana <- read.csv("PPP Data up to 150K - LA.csv")
+maine <- read.csv("PPP Data up to 150K - ME.csv")
+maryland <- read.csv("PPP Data up to 150K - MD.csv")
+massachusetts <- read.csv("PPP Data up to 150K - MA.csv")
+michigan <- read.csv("PPP Data up to 150K - MI.csv")
+minnesota <- read.csv("PPP Data up to 150K - MN.csv")
+mississippi <- read.csv("PPP Data up to 150K - MS.csv")
+missouri <- read.csv("PPP Data up to 150K - MO.csv")
+montana <- read.csv("PPP Data up to 150K - MT.csv")
+nebraska <- read.csv("PPP Data up to 150K - NE.csv")
+nevada <- read.csv("PPP Data up to 150K - NV.csv")
+new_hampshire <- read.csv("PPP Data up to 150K - NH.csv")
+new_jersey <- read.csv("PPP Data up to 150K - NJ.csv")
+new_mexico <- read.csv("PPP Data up to 150K - NM.csv")
+new_york <- read.csv("PPP Data up to 150K - NY.csv")
+north_carolina <- read.csv("PPP Data up to 150K - NC.csv")
+north_dakota <- read.csv("PPP Data up to 150K - ND.csv")
+ohio <- read.csv("PPP Data up to 150K - OH.csv")
+oklahoma <- read.csv("PPP Data up to 150K - OK.csv")
+oregon <- read.csv("PPP Data up to 150K - OR.csv")
+pennsylvania <- read.csv("PPP Data up to 150K - PA.csv")
+rhode_island <- read.csv("PPP Data up to 150K - RI.csv")
+south_carolina <- read.csv("PPP Data up to 150K - SC.csv")
+south_dakota <- read.csv("PPP Data up to 150K - SD.csv")
+tennessee <- read.csv("PPP Data up to 150K - TN.csv")
+texas <- read.csv("PPP Data up to 150K - TX.csv")
+utah <- read.csv("PPP Data up to 150K - UT.csv")
+vermont <- read.csv("PPP Data up to 150K - VT.csv")
+virginia <- read.csv("PPP Data up to 150K - VA.csv")
+washington <- read.csv("PPP Data up to 150K - WA.csv")
+west_virginia <- read.csv("PPP Data up to 150K - WV.csv")
+wisconsin <- read.csv("PPP Data up to 150K - WI.csv")
+wyoming <- read.csv("PPP Data up to 150K - WY.csv")
+
+```
+```{r}
+# We bind the PPP loans from each state into one national data set.
+state_ppp_data <- bind_rows(alabama, alaska, arizona, arkansas,
+                    california, colorado, connecticut, delaware, dc,
+                    delaware, florida, georgia, hawaii, idaho,
+                    illinois, indiana, iowa, kansas, kentucky,
+                    louisiana, maine, maryland, massachusetts,
+                    michigan, minnesota, mississippi, missouri, montana,
+                    nebraska, nevada, new_hampshire, new_jersey,
+                    new_mexico, new_jersey, new_york, north_carolina,
+                    north_dakota, ohio, oklahoma,
+                    oregon, pennsylvania,  rhode_island,
+                    south_carolina, south_dakota, tennessee, texas, utah,
+                    vermont, virginia, washington,
+                    west_virginia, wisconsin, wyoming, id = NULL)
+
+
+```
+
+Here, we filter and clean the new national data set to be only Asian-owned businesses.
+```{r}
+state_ppp_data_asian <- state_ppp_data %>%
+                            filter(RaceEthnicity == "Asian")
+```
+```{r}
+# We get rid of the columns we don't need here.
+nspda <- state_ppp_data_asian %>%
+              select(-NonProfit, -Veteran, -Lender, -RaceEthnicity, -State)
+```
+```{r}
+# We filter out rows with unanswered gender. 
+nspda <- nspda %>%
+  filter(!Gender == "Unanswered")
+
+```
+```{r}
+# We get rid of rows with N/As.
+nspda <- na.omit(nspda)
+colSums(is.na(nspda))
+dim(nspda)
+```
+
+Here, we take a glimpse at the different industries of Asian-owned businesses that filed PPP loans through NAICS codes.
+```{r}
+# We shorten the NAICS codes.
+nspda[,4] <- nspda[,4] %/% 10000
+```
+```{r}
+# We upload NAICS code key.
+naics <- read.csv("2017_NAICS_Structure_Summary_Table.csv")
+naics <- naics[1:25,1:2]
+```
+```{r}
+# aggregate mean PPP loans by industry
+nspda1 <- nspda %>%
+  group_by(NAICSCode)
+nspda1 <- aggregate(LoanAmount ~ NAICSCode, nspda, mean)
+names(naics)[names(naics) == "Sector"] <- "NAICSCode"
+nspda1 <- join(nspda1, naics, by = "NAICSCode", type = "left", match = "all")
+nspda1 <- aggregate(LoanAmount ~ Name, nspda1, mean)
+```
+```{r}
+# bar graph of average PPP loans filed by Asian-owned businesses per industry
+ggplot(nspda1, aes(x = Name, y = LoanAmount)) +
+  geom_bar(stat = "identity") + coord_flip() +
+  labs(x = "Industry",
+       y = "Average Amount in PPP Loans")
+```
+
+We upload, clean, and reformat our zip code to county crosswalk from the HUD here. 
+```{r}
+# We upload the zip code-county crosswalk here.
+fips_zip <- read.csv("ZIP_COUNTY_032020.csv")
+colSums(is.na(fips_zip))
+```
+```{r}
+# We get rid of the columns we don't want.
+fips_zip <- fips_zip %>%
+              select( -RES_RATIO, -OTH_RATIO)
+```
+```{r}
+# We fix variable types and pad 0s in front of zip codes.
+fips_zip$ZIP <- as.character(as.integer(fips_zip$ZIP))
+fips_zip$ZIP <- str_pad(fips_zip$ZIP, 5, side = "left", pad = "0")
+fips_zip$COUNTY <- as.character(as.integer(fips_zip$COUNTY))
+fips_zip$COUNTY <- str_pad(fips_zip$COUNTY, 5, side = "left", pad = "0")
+str(fips_zip)
+```
+
+In this data set, there are multiple zip codes associated with different counties. The original data set has columns indicating the percentage of addresses with said zip codes that fell in the categories of business, residential, and other. In order to do our analysis with data of businesses, we needed to find the the county for each zip code that had the highest ratio of businesses. We do so by grouping the crosswalk by identical zip codes and aggregating the zip codes by max business ratio. We then clean the data and adjust variable types.
+```{r}
+# We group the crosswalk by identical zip codes (in different counties).
+fips_zip <- fips_zip %>%
+  group_by(ZIP)
+names(fips_zip)[names(fips_zip) == "ZIP"] <- "Zip"
+```
+```{r}
+# aggregate unique zip codes by max ratio of businesses
+fips_zip_unique <- aggregate(fips_zip$BUS_RATIO, by = list(fips_zip$Zip), max)
+names(fips_zip_unique)[names(fips_zip_unique) == "Group.1"] <- "Zip"
+names(fips_zip_unique)[names(fips_zip_unique) == "x"] <- "BUS_RATIO"
+fips_zip <- fips_zip %>%
+  select(-BUS_RATIO, -TOT_RATIO)
+```
+```{r}
+# finished fips-zip crosswalk with unique zip codes by max business ratio
+fips_zip <- join(fips_zip, fips_zip_unique, by = "Zip", type = "right", match = "first")
+```
+```{r}
+# fixing variable types and padding zip codes to have 0s with 5 digits per zip 
+str(nspda)
+nspda$Zip <- as.character(as.integer(nspda$Zip))
+nspda$Zip <- str_pad(nspda$Zip, 5, side = "left", pad = "0")
+str(nspda)
+```
+
+Here, we join the data frames (PPP loans and zip-fips crosswalk) to find the counties that each business/loan are in.
+```{r}
+# join data frames
+dim(nspda)
+fips_nspda <- join(nspda, fips_zip, by = "Zip", type = "left", match = "all")
+```
+```{r}
+# clean fips_nspda
+colSums(is.na(fips_nspda))
+fips_nspda <- na.omit(fips_nspda)
+colSums(is.na(fips_nspda))
+```
+
+Here, we upload and clean the data of COVID-19 cases per county from the New York Times. This data was last updated on July 11, 2020. 
+```{r}
+covid_counties <- read.csv("covid_confirmed_usafacts.csv")
+```
+```{r}
+# we select columns we want and change feature names
+covid_counties <- covid_counties %>%
+              select(countyFIPS, County.Name, TotalCases, State)
+names(covid_counties)[names(covid_counties) == "countyFIPS"] <- "COUNTY"
+```
+```{r}
+str(covid_counties)
+covid_counties$COUNTY <- as.character(as.integer(covid_counties$COUNTY))
+covid_counties$COUNTY <- str_pad(covid_counties$COUNTY, 5, side = "left", pad = "0")
+```
+
+We are now joining the prior combined data set of PPP loans taken per county to the COVID-19 data set. We join the two by FIPS codes. We then clean the data and edit it so we only have the features we want. 
+```{r}
+# join covid cases with average ppp loans per county
+covidppp <- join(fips_nspda, covid_counties, by = "COUNTY", type = "left", match = "all")
+colSums(is.na(fips_nspda))
+```
+```{r}
+# get rid of unnecessary columns
+covidppp <- covidppp %>%
+  select(-BUS_RATIO, -CD, -BusinessType)
+```
+
+We aggregate the data to take the mean of all PPP loans taken out by Asian-owned businesses per county.
+```{r}
+covidppp1 <- aggregate(LoanAmount ~ COUNTY, covidppp, mean)
+covidppp <- join(covidppp1, covid_counties, by = "COUNTY", type = "left", match = "all")
+```
+```{r}
+colSums(is.na(covidppp))
+str(covidppp)
+covidppp$State <- as.factor(as.character(covidppp$State))
+```
+
+Checking correlation coefficient between two variables.
+```{r}
+cor(covidppp$TotalCases, covidppp$LoanAmount)
+```
+
+National plot of counties.
+```{r}
+ggplot(covidppp, aes(x = TotalCases, y = LoanAmount, col = "counties")) +
+  geom_point(size = 3, alpha = 0.5) +
+  scale_x_log10() + scale_y_log10() +
+  labs(title = "COVID-19 Cases and Average PPP Loans for Asian-Owned Businesses per County",
+       x = "Total Cases per County",
+       y = "Average PPP Loan Taken By Asian-Owned Businesses")
+
+```
+
+Plot with panels by state.
+```{r}
+ ggplot(covidppp, aes(x = TotalCases, y = LoanAmount, col = "counties")) +
+  geom_point(size = 3, alpha = 0.5) +
+  scale_x_log10() + scale_y_log10() +
+  labs(title = "COVID-19 Cases and Average PPP Loans for Asian-Owned Businesses per County",
+       x = "Total Cases per County",
+       y = "Average PPP Loan Taken By Asian-Owned Businesses",
+       color = "County") +
+   facet_wrap(~State) + 
+  theme(axis.title.x = element_text(vjust = 2)) +
+  theme(axis.title.y = element_text(angle = 90, vjust = 2))
+```
+
+National Plot with Colors by State. 
+(sydnote: it's overwhelmingly colorful and kind of hideous. disclaimer that this was just for fun!)
+```{r}
+ggplot(covidppp, aes(x = TotalCases, y = LoanAmount, color = State)) +
+  geom_point(size = 3, alpha = 0.5) +
+  scale_x_log10() + scale_y_log10() +
+  labs(title = "COVID-19 Cases and Average PPP Loans for Asian-Owned Businesses per County",
+       x = "Total Cases per County",
+       y = "Average PPP Loan Taken By Asian-Owned Businesses",
+       color = "County") +
+  theme(axis.title.x = element_text(vjust = 2)) +
+  theme(axis.title.y = element_text(angle = 90, vjust = 2))
+
+```
+
+We use linear regression to visualize the line of best fit.
+```{r}
+ggplot(covidppp, aes(TotalCases, LoanAmount)) + geom_point(size = 2, alpha = 0.5) + scale_x_log10() + scale_y_log10() + geom_smooth(method='lm', se=FALSE)
+```
+
+We use linear regression to create a predictive model. 
+```{r}
+set.seed(22)
+split <-  sample(x = 1:nrow(covidppp),size = 0.7*nrow(covidppp))
+train <- covidppp[split,]
+test <- covidppp[-split,]
+```
+```{r}
+lr_model <- lm(LoanAmount ~ TotalCases, data=train)
+summary(lr_model)
+```
+```{r}
+# find root mean square error
+predictions <- predict(lr_model, newdata = test)
+rmse <- sqrt(mean((predictions-test$LoanAmount)^2))
+rmse
+```
+```{r}
+# find mean absolute error
+mae <- mean(abs(predictions-test$LoanAmount))
+mae
+```
+```{r}
+# summary of residuals
+as.data.frame(summary(lr_model)$resid) %>%
+  arrange(desc(summary(lr_model)$resid))
+```
+```{r}
+results <- as.data.frame(cbind(test$LoanAmount, predictions))
+colnames(results) <- c('true', 'predicted')
+```
+
+We plot the values predicted by our model against the true values for average PPP loan amount by county. It's not particularly accurate.
+```{r}
+ggplot(results, aes(true, predicted)) + 
+  geom_point(size = 2, alpha = 0.5, color='#1A9988') + 
+  geom_abline(slope= 1, intercept = 0) 
+```
+
